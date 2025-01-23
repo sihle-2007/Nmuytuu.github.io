@@ -1,0 +1,236 @@
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Change Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .chatbox {
+            width: 300px;
+            height: 400px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .messages {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .input-area {
+            display: flex;
+            margin-top: 10px;
+        }
+        input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px;
+            margin-left: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .message {
+            margin-bottom: 10px;
+        }
+        .bot-message {
+            color: #4CAF50;
+        }
+        .user-message {
+            color: #007BFF;
+        }
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 50px;
+            height: 10px;
+            position: relative;
+            margin-top: 5px;
+        }
+        .loading div {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            animation: loading 1.5s infinite ease-in-out;
+        }
+        .loading div:nth-child(1) {
+            left: 0;
+            animation-delay: 0s;
+        }
+        .loading div:nth-child(2) {
+            left: 15px;
+            animation-delay: 0.3s;
+        }
+        .loading div:nth-child(3) {
+            left: 30px;
+            animation-delay: 0.6s;
+        }
+        @keyframes loading {
+            0% {
+                transform: scale(0);
+            }
+            50% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chatbox">
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Type your message here..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <!-- Audio elements for sounds -->
+    <audio id="loadingSound" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
+    <audio id="responseSound" src="https://www.soundjay.com/button/beep-09.wav" preload="auto"></audio>
+
+    <script>
+        let step = 0; // Tracks conversation step
+        let studentNumber = '';
+        let pin = '';
+        let courseChoice = '';
+        let timeout;
+
+        // Add message to chat
+        function addMessage(message, sender, withLoading = false) {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.classList.add(sender === 'bot' ? 'bot-message' : 'user-message');
+            messageDiv.innerText = message;
+            messagesContainer.appendChild(messageDiv);
+
+            if (withLoading) {
+                // Add loading dots below the question
+                const loadingDiv = document.createElement('div');
+                loadingDiv.classList.add('loading');
+                loadingDiv.innerHTML = '<div></div><div></div><div></div>';
+                messagesContainer.appendChild(loadingDiv);
+            }
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Function to simulate a 5-second delay
+        function sendMessage() {
+            const userInput = document.getElementById('userInput').value;
+            if (userInput.trim() === '') return;
+
+            // Display user message
+            addMessage(userInput, 'user');
+            document.getElementById('userInput').value = '';
+
+            // Show the question and loading dots below it
+            clearTimeout(timeout); // Clear any previous timeout to avoid stacking
+            addMessage('...', 'bot', true); // Show the loading dots while processing
+
+            // Play the loading sound
+            document.getElementById('loadingSound').play();
+
+            // Delay response by 5 seconds (5000ms)
+            timeout = setTimeout(() => {
+                // Remove loading dots after 5 seconds
+                const loadingDiv = document.querySelector('.loading');
+                if (loadingDiv) loadingDiv.remove(); // Remove the loading dots
+
+                // Handle bot response based on the step
+                switch (step) {
+                    case 0:
+                        addMessage('Please enter your student number:', 'bot');
+                        step++;
+                        break;
+                    case 1:
+                        studentNumber = userInput;
+                        addMessage('Please enter your 5-digit PIN.', 'bot');
+                        step++;
+                        break;
+                    case 2:
+                        if (userInput.length === 5 && !isNaN(userInput)) {
+                            pin = userInput;
+                            addMessage('For the change of course, you qualify for the following options:\n1. Diploma in Accounting\n2. Higher Certificate in Business Management\n\nPlease choose 1 or 2.', 'bot');
+                            step++;
+                        } else {
+                            addMessage('Invalid PIN. Please enter exactly 5 digits.', 'bot');
+                        }
+                        break;
+                    case 3:
+                        if (userInput === '1' || userInput === '2') {
+                            courseChoice = userInput;
+                            addMessage('You must pay the late application fee of R100 for your change of course to be processed. Please make payment to the following number: 2248805191 (Capitec Bank).', 'bot');
+                            step++;
+                        } else {
+                            addMessage('Please choose a valid option (1 or 2).', 'bot');
+                        }
+                        break;
+                    case 4:
+                        addMessage('Thank you! I will log out now.', 'bot');
+                        step++;
+                        break;
+                    case 5:
+                        addMessage('Log out approved. The late application fee is R100.', 'bot');
+                        break;
+                    default:
+                        // Restart conversation if the user types anything after the conversation is over
+                        resetConversation();
+                        break;
+                }
+
+                // Play the response sound
+                document.getElementById('responseSound').play();
+            }, 5000); // 5 seconds delay before the response is shown
+        }
+
+        // Function to reset the conversation to the beginning
+        function resetConversation() {
+            step = 0;
+            studentNumber = '';
+            pin = '';
+            courseChoice = '';
+            document.getElementById('messages').innerHTML = '';
+            addMessage('Please type anything to start:', 'bot');
+        }
+
+        // Trigger a reset when the user types anything after the conversation is done
+        document.getElementById('userInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter' && step > 5) {
+                resetConversation();
+            }
+        });
+
+        // Initialize the chatbot to wait for the first user input before proceeding
+        window.onload = function() {
+            // No message from the bot initially, wait for user input
+        }
+    </script>
+</body>
+</html>
